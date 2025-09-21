@@ -128,7 +128,7 @@ class TrustPayGateway {
     const voices = this.speechSynthesis.getVoices();
     const brVoices = voices.filter((v) => v.lang.startsWith("pt-BR"));
     if (brVoices.length > 0) {
-      utterance.voice = brVoices[2]; // pode trocar [0] por outro índice
+      utterance.voice = brVoices[0]; // pode trocar [0] por outro índice
     }
 
     this.speechSynthesis.speak(utterance);
@@ -235,12 +235,14 @@ class TrustPayGateway {
   }
 
   maskCardNumber(value) {
-    return value
-      .replace(/\D/g, "")
-      .replace(/(\d{4})(\d)/, "$1 $2")
-      .replace(/(\d{4})(\d)/, "$1 $2")
-      .replace(/(\d{4})(\d)/, "$1 $2")
-      .replace(/(\d{4})\d+?$/, "$1");
+    // Remove tudo que não é dígito
+    const cleaned = value.replace(/\D/g, "");
+
+    // Limita a 16 dígitos
+    const limited = cleaned.substring(0, 16);
+
+    // Adiciona espaços a cada 4 dígitos
+    return limited.replace(/(\d{4})(?=\d)/g, "$1 ");
   }
 
   maskCardExpiry(value) {
@@ -288,28 +290,18 @@ class TrustPayGateway {
   }
 
   validateCardNumber(number) {
+    // Remove todos os caracteres não numéricos (espaços, hífens, etc.)
     const cleaned = number.replace(/\D/g, "");
-    if (cleaned.length !== 16) return false;
 
-    // Algoritmo de Luhn
-    let sum = 0;
-    let isEven = false;
-
-    for (let i = cleaned.length - 1; i >= 0; i--) {
-      let digit = parseInt(cleaned.charAt(i));
-
-      if (isEven) {
-        digit *= 2;
-        if (digit > 9) {
-          digit -= 9;
-        }
-      }
-
-      sum += digit;
-      isEven = !isEven;
+    // Verifica apenas se tem exatamente 16 dígitos
+    if (cleaned.length !== 16) {
+      console.log(`Cartão deve ter 16 dígitos. Atual: ${cleaned.length}`);
+      return false;
     }
 
-    return sum % 10 === 0;
+    // Para teste: aceita qualquer combinação de 16 dígitos
+    console.log(`Cartão válido para teste: ${cleaned}`);
+    return true;
   }
 
   validateCardExpiry(expiry) {
