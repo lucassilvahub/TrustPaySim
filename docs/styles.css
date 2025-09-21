@@ -1,0 +1,733 @@
+/* ========================================
+   TRUSTPAY - GATEWAY DE PAGAMENTO ACESSÍVEL
+   Arquivo: styles.css
+   ======================================== */
+
+/* ========================================
+   VARIÁVEIS CSS
+   ======================================== */
+:root {
+    --primary-color: #4f46e5;
+    --primary-dark: #3730a3;
+    --secondary-color: #06b6d4;
+    --accent-color: #10b981;
+    --error-color: #ef4444;
+    --success-color: #22c55e;
+    --warning-color: #f59e0b;
+    --text-dark: #1f2937;
+    --text-light: #6b7280;
+    --background: #ffffff;
+    --surface: #f9fafb;
+    --border: #e5e7eb;
+    --focus-ring: 0 0 0 3px rgba(79, 70, 229, 0.3);
+}
+
+/* ========================================
+   RESET E BASE
+   ======================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: var(--text-dark);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ========================================
+   SKIP LINKS E ACESSIBILIDADE
+   ======================================== */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 6px;
+    background: var(--primary-color);
+    color: white;
+    padding: 8px 16px;
+    text-decoration: none;
+    border-radius: 4px;
+    z-index: 10000;
+    font-weight: 600;
+}
+
+.skip-link:focus {
+    top: 6px;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ========================================
+   CONTAINER PRINCIPAL
+   ======================================== */
+.payment-container {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    max-width: 500px;
+    width: 100%;
+    margin: 20px;
+}
+
+/* ========================================
+   HEADER
+   ======================================== */
+.payment-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    padding: 2rem;
+    text-align: center;
+    position: relative;
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.logo-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.payment-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.payment-subtitle {
+    opacity: 0.9;
+    font-size: 0.9rem;
+}
+
+/* ========================================
+   CONTROLES DE ACESSIBILIDADE
+   ======================================== */
+.accessibility-controls {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.accessibility-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.3s ease;
+}
+
+.accessibility-btn:hover,
+.accessibility-btn:focus {
+    background: rgba(255, 255, 255, 0.3);
+    outline: 2px solid white;
+    outline-offset: 2px;
+}
+
+.accessibility-btn.active {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+/* ========================================
+   INDICADOR DE PROGRESSO
+   ======================================== */
+.progress-indicator {
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: var(--text-light);
+    text-align: center;
+}
+
+/* ========================================
+   NAVEGAÇÃO POR ETAPAS
+   ======================================== */
+.steps-nav {
+    background: var(--surface);
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.steps-list {
+    display: flex;
+    justify-content: space-between;
+    list-style: none;
+    position: relative;
+}
+
+.steps-list::before {
+    content: '';
+    position: absolute;
+    top: 15px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--border);
+    z-index: 1;
+}
+
+.step-item {
+    flex: 1;
+    text-align: center;
+    position: relative;
+    z-index: 2;
+}
+
+.step-circle {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--border);
+    color: var(--text-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 0.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.step-item.active .step-circle {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-dark);
+}
+
+.step-item.completed .step-circle {
+    background: var(--success-color);
+    color: white;
+}
+
+.step-label {
+    font-size: 0.8rem;
+    color: var(--text-light);
+    font-weight: 500;
+}
+
+.step-item.active .step-label {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+/* ========================================
+   FORMULÁRIO PRINCIPAL
+   ======================================== */
+.payment-form {
+    padding: 2rem;
+}
+
+.form-section {
+    margin-bottom: 2rem;
+}
+
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+    position: relative;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    font-size: 0.9rem;
+}
+
+.required {
+    color: var(--error-color);
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background: var(--background);
+    font-family: inherit;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: var(--focus-ring);
+}
+
+.form-input:focus + .input-help {
+    opacity: 1;
+    visibility: visible;
+}
+
+.form-input.error {
+    border-color: var(--error-color);
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.form-input.success {
+    border-color: var(--success-color);
+    background: rgba(34, 197, 94, 0.05);
+}
+
+/* ========================================
+   DICAS DE INPUT
+   ======================================== */
+.input-help {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--text-dark);
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    z-index: 10;
+    margin-top: 0.25rem;
+}
+
+.input-help::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: 12px;
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-bottom: 4px solid var(--text-dark);
+}
+
+/* ========================================
+   GRUPOS DE INPUT
+   ======================================== */
+.input-group {
+    display: flex;
+    gap: 1rem;
+}
+
+.input-group .form-group {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+/* ========================================
+   MENSAGENS DE CAMPO
+   ======================================== */
+.field-message {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 1.2rem;
+}
+
+.field-message.error {
+    color: var(--error-color);
+}
+
+.field-message.success {
+    color: var(--success-color);
+}
+
+.field-message.warning {
+    color: var(--warning-color);
+}
+
+/* ========================================
+   RESUMO DO PEDIDO
+   ======================================== */
+.order-summary {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border: 1px solid var(--border);
+}
+
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+    align-items: center;
+}
+
+.summary-item:last-child {
+    margin-bottom: 0;
+    padding-top: 0.75rem;
+    border-top: 2px solid var(--border);
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.item-label {
+    color: var(--text-light);
+}
+
+.item-value {
+    color: var(--text-dark);
+    font-weight: 500;
+}
+
+/* ========================================
+   BOTÕES
+   ======================================== */
+.button-group {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.btn {
+    flex: 1;
+    padding: 1rem 1.5rem;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-family: inherit;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn:focus {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+.btn:focus-visible {
+    outline: 3px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+}
+
+.btn-secondary {
+    background: white;
+    color: var(--text-dark);
+    border: 2px solid var(--border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: var(--surface);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* ========================================
+   ESTADOS DE CARREGAMENTO
+   ======================================== */
+.loading {
+    position: relative;
+    color: transparent !important;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ========================================
+   ESTADOS DAS ETAPAS
+   ======================================== */
+.step {
+    display: none;
+}
+
+.step.active {
+    display: block;
+}
+
+/* ========================================
+   TELA DE SUCESSO
+   ======================================== */
+.success-screen {
+    text-align: center;
+    padding: 3rem 2rem;
+}
+
+.success-icon {
+    width: 80px;
+    height: 80px;
+    background: var(--success-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 2rem;
+    color: white;
+    font-size: 2rem;
+    animation: successPulse 0.6s ease-out;
+}
+
+@keyframes successPulse {
+    0% { transform: scale(0.8); opacity: 0; }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.success-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: var(--text-dark);
+}
+
+.success-message {
+    color: var(--text-light);
+    margin-bottom: 2rem;
+    line-height: 1.6;
+}
+
+.transaction-details {
+    background: var(--surface);
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin: 1.5rem 0;
+    text-align: left;
+}
+
+.transaction-id {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.transaction-amount {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--success-color);
+}
+
+/* ========================================
+   RESPONSIVIDADE
+   ======================================== */
+@media (max-width: 480px) {
+    .payment-container {
+        margin: 10px;
+        border-radius: 15px;
+    }
+    
+    .payment-header {
+        padding: 1.5rem;
+    }
+    
+    .accessibility-controls {
+        position: static;
+        justify-content: center;
+        margin-top: 1rem;
+    }
+    
+    .input-group {
+        flex-direction: column;
+        gap: 0;
+    }
+    
+    .input-group .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .button-group {
+        flex-direction: column;
+    }
+    
+    .btn {
+        min-height: 50px;
+    }
+}
+
+/* ========================================
+   ANIMAÇÕES
+   ======================================== */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeInUp 0.4s ease-out;
+}
+
+/* ========================================
+   TEMAS E PREFERÊNCIAS DO SISTEMA
+   ======================================== */
+
+/* Tema de alto contraste */
+@media (prefers-contrast: high) {
+    :root {
+        --border: #000000;
+        --text-light: #000000;
+        --surface: #ffffff;
+    }
+    
+    .form-input {
+        border-width: 3px;
+    }
+    
+    .btn {
+        border: 3px solid transparent;
+    }
+    
+    .btn-secondary {
+        border-color: #000000;
+    }
+}
+
+/* Redução de movimento */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ========================================
+   CLASSES UTILITÁRIAS
+   ======================================== */
+.high-contrast {
+    filter: contrast(2);
+}
+
+.reduced-motion * {
+    animation: none !important;
+    transition: none !important;
+}
+
+/* ========================================
+   ESTADOS DE FOCO APRIMORADOS
+   ======================================== */
+.form-input:focus-visible,
+.btn:focus-visible,
+.accessibility-btn:focus-visible {
+    outline: 3px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* ========================================
+   MELHORIAS PARA LEITORES DE TELA
+   ======================================== */
+@media (prefers-reduced-motion: reduce) {
+    .fade-in {
+        animation: none;
+    }
+    
+    .success-icon {
+        animation: none;
+    }
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+@media print {
+    body {
+        background: white;
+    }
+    
+    .payment-container {
+        box-shadow: none;
+        border: 1px solid #000;
+    }
+    
+    .accessibility-controls {
+        display: none;
+    }
+    
+    .btn {
+        border: 2px solid #000;
+        background: white !important;
+        color: #000 !important;
+    }
+}

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TrustPay - Gateway de Pagamento Acessível</title>
+  <meta name="description" content="Gateway de pagamento brasileiro desenvolvido para deficientes visuais">
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <a href="#main-content" class="skip-link">Pular para o conteúdo principal</a>
+
+  <main class="payment-container" id="main-content">
+    <!-- Header -->
+    <header class="payment-header">
+      <div class="accessibility-controls">
+        <button class="accessibility-btn" id="toggle-audio" title="Alternar áudio (Ctrl+Shift+S)">
+          🔊
+        </button>
+        <button class="accessibility-btn" id="increase-font" title="Aumentar fonte (Ctrl++)">
+          A+
+        </button>
+        <button class="accessibility-btn" id="decrease-font" title="Diminuir fonte (Ctrl+-)">
+          A-
+        </button>
+      </div>
+
+      <div class="logo-container">
+        <div class="logo-icon" role="img" aria-label="Ícone de acessibilidade">♿</div>
+        <h1 class="payment-title">TrustPay</h1>
+      </div>
+      <p class="payment-subtitle">Gateway de Pagamento Acessível</p>
+    </header>
+
+    <!-- Indicador de progresso -->
+    <div class="progress-indicator" aria-live="polite" id="progress-indicator">
+      Etapa 1 de 3: Dados do Cliente
+    </div>
+
+    <!-- Navegação por etapas -->
+    <nav class="steps-nav" role="navigation" aria-label="Etapas do pagamento">
+      <ol class="steps-list">
+        <li class="step-item active" id="step-indicator-1">
+          <div class="step-circle">1</div>
+          <div class="step-label">Dados</div>
+        </li>
+        <li class="step-item" id="step-indicator-2">
+          <div class="step-circle">2</div>
+          <div class="step-label">Pagamento</div>
+        </li>
+        <li class="step-item" id="step-indicator-3">
+          <div class="step-circle">3</div>
+          <div class="step-label">Confirmação</div>
+        </li>
+      </ol>
+    </nav>
+
+    <!-- Formulário de pagamento -->
+    <form class="payment-form" id="payment-form" novalidate aria-describedby="form-instructions">
+      <div id="form-instructions" class="sr-only">
+        Formulário de pagamento em 3 etapas. Use Tab para navegar entre campos, Enter para avançar, Escape para voltar.
+      </div>
+
+      <!-- Etapa 1: Dados do Cliente -->
+      <div class="step active fade-in" id="step-1" role="region" aria-labelledby="step-1-title">
+        <div class="form-section">
+          <h2 class="section-title" id="step-1-title">
+            <span role="img" aria-label="Pessoa">👤</span> Dados do Cliente
+          </h2>
+
+          <div class="form-group">
+            <label for="customer-name" class="form-label">
+              Nome Completo
+              <span class="required" aria-hidden="true">*</span>
+            </label>
+            <input type="text" id="customer-name" name="customerName" class="form-input" required autocomplete="name"
+              aria-describedby="name-error name-help" placeholder="Digite seu nome completo" minlength="2"
+              maxlength="100">
+            <div class="input-help" id="name-help">
+              Digite seu nome completo como aparece nos seus documentos
+            </div>
+            <div class="field-message" id="name-error" role="alert" aria-live="polite"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="customer-email" class="form-label">
+              E-mail <span class="required" aria-label="obrigatório">*</span>
+            </label>
+            <input type="email" id="customer-email" name="customerEmail" class="form-input" required
+              autocomplete="email" aria-describedby="email-error email-help" placeholder="seu@email.com">
+            <div class="input-help" id="email-help">
+              Enviaremos o comprovante para este e-mail
+            </div>
+            <div class="field-message" id="email-error" role="alert" aria-live="polite"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="customer-cpf" class="form-label">
+              CPF <span class="required" aria-label="obrigatório">*</span>
+            </label>
+            <input type="text" id="customer-cpf" name="customerCpf" class="form-input" required autocomplete="off"
+              aria-describedby="cpf-error cpf-help" placeholder="000.000.000-00" maxlength="14" inputmode="numeric">
+            <div class="input-help" id="cpf-help">
+              Apenas números, pontos e hífen serão formatados automaticamente
+            </div>
+            <div class="field-message" id="cpf-error" role="alert" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <!-- Resumo do pedido -->
+        <section class="order-summary" aria-labelledby="order-summary-title">
+          <h3 class="section-title" id="order-summary-title">
+            <span role="img" aria-label="Prancheta">📋</span> Resumo do Pedido
+          </h3>
+          <div class="summary-item">
+            <span class="item-label">Produto:</span>
+            <span class="item-value">Curso de Programação</span>
+          </div>
+          <div class="summary-item">
+            <span class="item-label">Subtotal:</span>
+            <span class="item-value">R$ 149,90</span>
+          </div>
+          <div class="summary-item">
+            <span class="item-label">Taxa de processamento:</span>
+            <span class="item-value">R$ 4,50</span>
+          </div>
+          <div class="summary-item" aria-describedby="total-description">
+            <span class="item-label">Total:</span>
+            <span class="item-value">R$ 154,40</span>
+          </div>
+          <div id="total-description" class="sr-only">Valor total a ser cobrado</div>
+        </section>
+
+        <div class="button-group">
+          <button type="button" class="btn btn-primary" id="next-step-1" aria-describedby="next-help">
+            Continuar <span aria-hidden="true">→</span>
+          </button>
+        </div>
+        <div id="next-help" class="sr-only">Pressione Enter ou use Ctrl+Enter para avançar rapidamente</div>
+      </div>
+
+      <!-- Etapa 2: Dados do Cartão -->
+      <div class="step fade-in" id="step-2" role="region" aria-labelledby="step-2-title">
+        <div class="form-section">
+          <h2 class="section-title" id="step-2-title">
+            <span role="img" aria-label="Cartão de crédito">💳</span> Dados do Cartão
+          </h2>
+
+          <div class="form-group">
+            <label for="card-number" class="form-label">
+              Número do Cartão <span class="required" aria-label="obrigatório">*</span>
+            </label>
+            <input type="text" id="card-number" name="cardNumber" class="form-input" required autocomplete="cc-number"
+              aria-describedby="card-error card-help" placeholder="0000 0000 0000 0000" maxlength="19"
+              inputmode="numeric">
+            <div class="input-help" id="card-help">
+              Digite os 16 dígitos do seu cartão. Espaços serão adicionados automaticamente
+            </div>
+            <div class="field-message" id="card-error" role="alert" aria-live="polite"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="card-name" class="form-label">
+              Nome no Cartão <span class="required" aria-label="obrigatório">*</span>
+            </label>
+            <input type="text" id="card-name" name="cardName" class="form-input" required autocomplete="cc-name"
+              aria-describedby="card-name-error card-name-help" placeholder="Nome como está no cartão" maxlength="50">
+            <div class="input-help" id="card-name-help">
+              Digite o nome exatamente como aparece no cartão
+            </div>
+            <div class="field-message" id="card-name-error" role="alert" aria-live="polite"></div>
+          </div>
+
+          <div class="input-group">
+            <div class="form-group">
+              <label for="card-expiry" class="form-label">
+                Validade <span class="required" aria-label="obrigatório">*</span>
+              </label>
+              <input type="text" id="card-expiry" name="cardExpiry" class="form-input" required autocomplete="cc-exp"
+                aria-describedby="expiry-error expiry-help" placeholder="MM/AA" maxlength="5" inputmode="numeric">
+              <div class="input-help" id="expiry-help">
+                Mês e ano de validade do cartão
+              </div>
+              <div class="field-message" id="expiry-error" role="alert" aria-live="polite"></div>
+            </div>
+
+            <div class="form-group">
+              <label for="card-cvv" class="form-label">
+                CVV <span class="required" aria-label="obrigatório">*</span>
+              </label>
+              <input type="text" id="card-cvv" name="cardCvv" class="form-input" required autocomplete="cc-csc"
+                aria-describedby="cvv-error cvv-help" placeholder="123" maxlength="4" inputmode="numeric">
+              <div class="input-help" id="cvv-help">
+                Código de 3 ou 4 dígitos no verso do cartão
+              </div>
+              <div class="field-message" id="cvv-error" role="alert" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button type="button" class="btn btn-secondary" id="back-step-2">
+            <span aria-hidden="true">←</span> Voltar
+          </button>
+          <button type="button" class="btn btn-primary" id="next-step-2">
+            Revisar Pedido <span aria-hidden="true">→</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Etapa 3: Confirmação -->
+      <div class="step fade-in" id="step-3" role="region" aria-labelledby="step-3-title">
+        <div class="form-section">
+          <h2 class="section-title" id="step-3-title">
+            <span role="img" aria-label="Marca de verificação">✅</span> Confirmação Final
+          </h2>
+
+          <section class="order-summary" aria-labelledby="customer-data-title">
+            <h3 id="customer-data-title">Dados do Cliente</h3>
+            <div class="summary-item">
+              <span class="item-label">Nome:</span>
+              <span class="item-value" id="confirm-name">-</span>
+            </div>
+            <div class="summary-item">
+              <span class="item-label">E-mail:</span>
+              <span class="item-value" id="confirm-email">-</span>
+            </div>
+            <div class="summary-item">
+              <span class="item-label">CPF:</span>
+              <span class="item-value" id="confirm-cpf">-</span>
+            </div>
+          </section>
+
+          <section class="order-summary" aria-labelledby="payment-data-title">
+            <h3 id="payment-data-title">Dados do Pagamento</h3>
+            <div class="summary-item">
+              <span class="item-label">Cartão:</span>
+              <span class="item-value" id="confirm-card">-</span>
+            </div>
+            <div class="summary-item">
+              <span class="item-label">Total:</span>
+              <span class="item-value">R$ 154,40</span>
+            </div>
+          </section>
+        </div>
+
+        <div class="button-group">
+          <button type="button" class="btn btn-secondary" id="back-step-3">
+            <span aria-hidden="true">←</span> Voltar
+          </button>
+          <button type="submit" class="btn btn-primary" id="submit-payment" aria-describedby="submit-help">
+            <span role="img" aria-label="Cartão de crédito">💳</span> Finalizar Pagamento
+          </button>
+        </div>
+        <div id="submit-help" class="sr-only">Pressione Enter para processar o pagamento</div>
+      </div>
+    </form>
+
+    <!-- Tela de sucesso -->
+    <div class="step fade-in" id="success-screen" style="display: none;" role="region" aria-labelledby="success-title">
+      <div class="success-screen">
+        <div class="success-icon" role="img" aria-label="Sucesso">✓</div>
+        <h2 class="success-title" id="success-title">Pagamento Aprovado!</h2>
+        <p class="success-message">
+          Sua transação foi processada com sucesso. Você receberá um e-mail de confirmação em breve.
+        </p>
+        <div class="transaction-details" aria-labelledby="transaction-details-title">
+          <h3 id="transaction-details-title" class="sr-only">Detalhes da Transação</h3>
+          <div class="transaction-id">
+            ID da Transação: <span id="transaction-id">TP-2025-001234</span>
+          </div>
+          <div class="transaction-amount">
+            Valor: R$ 154,40
+          </div>
+          <div style="margin-top: 0.5rem; color: var(--text-light); font-size: 0.9rem;">
+            Data/Hora: <span id="transaction-date"></span>
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary" onclick="restartPaymentFlow()">
+          <span role="img" aria-label="Casa">🏠</span> Nova Transação
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Live regions para anúncios ao leitor de tela -->
+  <div aria-live="polite" aria-atomic="true" class="sr-only" id="live-region"></div>
+  <div aria-live="assertive" aria-atomic="true" class="sr-only" id="live-region-urgent"></div>
+  <div aria-live="assertive" aria-atomic="true" class="sr-only" id="error-announcer"></div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>
