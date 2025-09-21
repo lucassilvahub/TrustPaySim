@@ -44,13 +44,15 @@ class TrustPayGateway {
   }
 
   announceWelcome() {
+    console.log("Anunciando boas-vindas");
+
     setTimeout(() => {
       this.announceToScreenReader(
         "Bem-vindo ao TrustPay, gateway de pagamento acessível. " +
           "Use Tab para navegar, Enter para confirmar, Escape para voltar. " +
           "Pressione F1 para ajuda sobre navegação."
       );
-    }, 1000);
+    }, 500);
   }
 
   /**
