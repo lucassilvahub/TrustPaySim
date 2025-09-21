@@ -16,14 +16,17 @@
     <!-- Header -->
     <header class="payment-header">
       <div class="accessibility-controls">
-        <button class="accessibility-btn" id="toggle-audio" title="Alternar áudio (Ctrl+Shift+S)">
+        <button class="accessibility-btn" id="toggle-audio" title="Alternar áudio (Ctrl+Shift+S)" aria-label="Alternar síntese de voz">
           🔊
         </button>
-        <button class="accessibility-btn" id="increase-font" title="Aumentar fonte (Ctrl++)">
+        <button class="accessibility-btn" id="increase-font" title="Aumentar fonte (Ctrl++)" aria-label="Aumentar tamanho da fonte">
           A+
         </button>
-        <button class="accessibility-btn" id="decrease-font" title="Diminuir fonte (Ctrl+-)">
+        <button class="accessibility-btn" id="decrease-font" title="Diminuir fonte (Ctrl+-)" aria-label="Diminuir tamanho da fonte">
           A-
+        </button>
+        <button class="accessibility-btn" id="accessibility-prefs" title="Configurações de acessibilidade" aria-label="Abrir configurações de acessibilidade">
+          ⚙️
         </button>
       </div>
 
@@ -43,24 +46,30 @@
     <nav class="steps-nav" role="navigation" aria-label="Etapas do pagamento">
       <ol class="steps-list">
         <li class="step-item active" id="step-indicator-1">
-          <div class="step-circle">1</div>
+          <div class="step-circle" aria-label="Etapa 1">1</div>
           <div class="step-label">Dados</div>
         </li>
         <li class="step-item" id="step-indicator-2">
-          <div class="step-circle">2</div>
+          <div class="step-circle" aria-label="Etapa 2">2</div>
           <div class="step-label">Pagamento</div>
         </li>
         <li class="step-item" id="step-indicator-3">
-          <div class="step-circle">3</div>
+          <div class="step-circle" aria-label="Etapa 3">3</div>
           <div class="step-label">Confirmação</div>
         </li>
       </ol>
     </nav>
 
+    <!-- Atalhos de teclado -->
+    <div class="keyboard-shortcuts sr-only" aria-live="polite" id="shortcuts-help">
+      Atalhos: Tab para navegar, Enter para avançar, F1 para ajuda, F2 para repetir campo, F3 para comando de voz, Escape para voltar
+    </div>
+
     <!-- Formulário de pagamento -->
     <form class="payment-form" id="payment-form" novalidate aria-describedby="form-instructions">
       <div id="form-instructions" class="sr-only">
         Formulário de pagamento em 3 etapas. Use Tab para navegar entre campos, Enter para avançar, Escape para voltar.
+        Pressione F2 para repetir o valor do campo atual, F3 para comandos de voz.
       </div>
 
       <!-- Etapa 1: Dados do Cliente -->
@@ -75,9 +84,16 @@
               Nome Completo
               <span class="required" aria-hidden="true">*</span>
             </label>
-            <input type="text" id="customer-name" name="customerName" class="form-input" required autocomplete="name"
-              aria-describedby="name-error name-help" placeholder="Digite seu nome completo" minlength="2"
-              maxlength="100">
+            <div class="input-container">
+              <input type="text" id="customer-name" name="customerName" class="form-input" required autocomplete="name"
+                aria-describedby="name-error name-help" 
+                aria-label="Nome completo, campo obrigatório"
+                aria-description="Digite seu nome completo como aparece nos seus documentos"
+                placeholder="Digite seu nome completo" minlength="2" maxlength="100">
+              <button type="button" class="field-confirm-btn" aria-label="Repetir valor do campo nome" tabindex="-1">
+                🔊
+              </button>
+            </div>
             <div class="input-help" id="name-help">
               Digite seu nome completo como aparece nos seus documentos
             </div>
@@ -86,10 +102,19 @@
 
           <div class="form-group">
             <label for="customer-email" class="form-label">
-              E-mail <span class="required" aria-label="obrigatório">*</span>
+              E-mail 
+              <span class="required" aria-hidden="true">*</span>
             </label>
-            <input type="email" id="customer-email" name="customerEmail" class="form-input" required
-              autocomplete="email" aria-describedby="email-error email-help" placeholder="seu@email.com">
+            <div class="input-container">
+              <input type="email" id="customer-email" name="customerEmail" class="form-input" required
+                autocomplete="email" aria-describedby="email-error email-help" 
+                aria-label="E-mail, campo obrigatório"
+                aria-description="Endereço de email para recebimento do comprovante"
+                placeholder="seu@email.com">
+              <button type="button" class="field-confirm-btn" aria-label="Repetir valor do campo email" tabindex="-1">
+                🔊
+              </button>
+            </div>
             <div class="input-help" id="email-help">
               Enviaremos o comprovante para este e-mail
             </div>
@@ -98,10 +123,19 @@
 
           <div class="form-group">
             <label for="customer-cpf" class="form-label">
-              CPF <span class="required" aria-label="obrigatório">*</span>
+              CPF 
+              <span class="required" aria-hidden="true">*</span>
             </label>
-            <input type="text" id="customer-cpf" name="customerCpf" class="form-input" required autocomplete="off"
-              aria-describedby="cpf-error cpf-help" placeholder="000.000.000-00" maxlength="14" inputmode="numeric">
+            <div class="input-container">
+              <input type="text" id="customer-cpf" name="customerCpf" class="form-input" required autocomplete="off"
+                aria-describedby="cpf-error cpf-help" 
+                aria-label="CPF, campo obrigatório"
+                aria-description="Cadastro de Pessoa Física com 11 dígitos"
+                placeholder="000.000.000-00" maxlength="14" inputmode="numeric">
+              <button type="button" class="field-confirm-btn" aria-label="Repetir valor do campo CPF" tabindex="-1">
+                🔊
+              </button>
+            </div>
             <div class="input-help" id="cpf-help">
               Apenas números, pontos e hífen serão formatados automaticamente
             </div>
@@ -150,11 +184,19 @@
 
           <div class="form-group">
             <label for="card-number" class="form-label">
-              Número do Cartão <span class="required" aria-label="obrigatório">*</span>
+              Número do Cartão 
+              <span class="required" aria-hidden="true">*</span>
             </label>
-            <input type="text" id="card-number" name="cardNumber" class="form-input" required autocomplete="cc-number"
-              aria-describedby="card-error card-help" placeholder="0000 0000 0000 0000" maxlength="19"
-              inputmode="numeric">
+            <div class="input-container">
+              <input type="text" id="card-number" name="cardNumber" class="form-input" required autocomplete="cc-number"
+                aria-describedby="card-error card-help" 
+                aria-label="Número do cartão, campo obrigatório"
+                aria-description="Número do cartão de crédito ou débito com 16 dígitos"
+                placeholder="0000 0000 0000 0000" maxlength="19" inputmode="numeric">
+              <button type="button" class="field-confirm-btn" aria-label="Repetir valor do campo número do cartão" tabindex="-1">
+                🔊
+              </button>
+            </div>
             <div class="input-help" id="card-help">
               Digite os 16 dígitos do seu cartão. Espaços serão adicionados automaticamente
             </div>
@@ -163,10 +205,19 @@
 
           <div class="form-group">
             <label for="card-name" class="form-label">
-              Nome no Cartão <span class="required" aria-label="obrigatório">*</span>
+              Nome no Cartão 
+              <span class="required" aria-hidden="true">*</span>
             </label>
-            <input type="text" id="card-name" name="cardName" class="form-input" required autocomplete="cc-name"
-              aria-describedby="card-name-error card-name-help" placeholder="Nome como está no cartão" maxlength="50">
+            <div class="input-container">
+              <input type="text" id="card-name" name="cardName" class="form-input" required autocomplete="cc-name"
+                aria-describedby="card-name-error card-name-help" 
+                aria-label="Nome no cartão, campo obrigatório"
+                aria-description="Nome impresso no cartão exatamente como aparece"
+                placeholder="Nome como está no cartão" maxlength="50">
+              <button type="button" class="field-confirm-btn" aria-label="Repetir valor do campo nome no cartão" tabindex="-1">
+                🔊
+              </button>
+            </div>
             <div class="input-help" id="card-name-help">
               Digite o nome exatamente como aparece no cartão
             </div>
@@ -176,10 +227,19 @@
           <div class="input-group">
             <div class="form-group">
               <label for="card-expiry" class="form-label">
-                Validade <span class="required" aria-label="obrigatório">*</span>
+                Validade 
+                <span class="required" aria-hidden="true">*</span>
               </label>
-              <input type="text" id="card-expiry" name="cardExpiry" class="form-input" required autocomplete="cc-exp"
-                aria-describedby="expiry-error expiry-help" placeholder="MM/AA" maxlength="5" inputmode="numeric">
+              <div class="input-container">
+                <input type="text" id="card-expiry" name="cardExpiry" class="form-input" required autocomplete="cc-exp"
+                  aria-describedby="expiry-error expiry-help" 
+                  aria-label="Validade do cartão, campo obrigatório"
+                  aria-description="Data de validade no formato mês barra ano"
+                  placeholder="MM/AA" maxlength="5" inputmode="numeric">
+                <button type="button" class="field-confirm-btn" aria-label="Repetir valor do campo validade" tabindex="-1">
+                  🔊
+                </button>
+              </div>
               <div class="input-help" id="expiry-help">
                 Mês e ano de validade do cartão
               </div>
@@ -188,10 +248,19 @@
 
             <div class="form-group">
               <label for="card-cvv" class="form-label">
-                CVV <span class="required" aria-label="obrigatório">*</span>
+                CVV 
+                <span class="required" aria-hidden="true">*</span>
               </label>
-              <input type="text" id="card-cvv" name="cardCvv" class="form-input" required autocomplete="cc-csc"
-                aria-describedby="cvv-error cvv-help" placeholder="123" maxlength="4" inputmode="numeric">
+              <div class="input-container">
+                <input type="text" id="card-cvv" name="cardCvv" class="form-input" required autocomplete="cc-csc"
+                  aria-describedby="cvv-error cvv-help" 
+                  aria-label="CVV, campo obrigatório"
+                  aria-description="Código de segurança de 3 ou 4 dígitos no verso do cartão"
+                  placeholder="123" maxlength="4" inputmode="numeric">
+                <button type="button" class="field-confirm-btn" aria-label="Repetir valor do campo CVV" tabindex="-1">
+                  🔊
+                </button>
+              </div>
               <div class="input-help" id="cvv-help">
                 Código de 3 ou 4 dígitos no verso do cartão
               </div>
@@ -289,6 +358,7 @@
   <div aria-live="polite" aria-atomic="true" class="sr-only" id="live-region"></div>
   <div aria-live="assertive" aria-atomic="true" class="sr-only" id="live-region-urgent"></div>
   <div aria-live="assertive" aria-atomic="true" class="sr-only" id="error-announcer"></div>
+  <div aria-live="polite" aria-atomic="true" class="sr-only" id="progressive-announcer"></div>
 
   <script src="script.js"></script>
 </body>
