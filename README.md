@@ -1,4 +1,4 @@
-# TrustPaySim ⚠️
+# TrustPaySim
 
 **Simulação do gateway de pagamento TrustPay**  
 
