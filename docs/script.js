@@ -128,7 +128,7 @@ class TrustPayGateway {
     const voices = this.speechSynthesis.getVoices();
     const brVoices = voices.filter((v) => v.lang.startsWith("pt-BR"));
     if (brVoices.length > 0) {
-      utterance.voice = brVoices[0]; // pode trocar [0] por outro índice
+      utterance.voice = brVoices[2]; // pode trocar [0] por outro índice
     }
 
     this.speechSynthesis.speak(utterance);
