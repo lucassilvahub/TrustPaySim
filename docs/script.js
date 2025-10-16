@@ -68,13 +68,20 @@ class VoicePayment {
     this.isInitialized = true;
     document.getElementById("startScreen").style.display = "none";
     document.getElementById("main").style.display = "block";
-    await this.ensureAudioUnlocked(); // desbloqueia o áudio
-    this.updateProductSummary();
 
-    this.speak(
-      `Você está executando o pagamento do produto ${this.productName} no valor de ${this.productValue}. Diga "ajuda" a qualquer momento para ouvir os comandos.`
-    );
-    this.startVoiceFlow();
+    await this.ensureAudioUnlocked(); // desbloqueia contexto de áudio
+
+    // ✅ Fala inicial garantida pelo clique (desbloqueia voz no iOS)
+    this.speak("Inicializando pagamento por voz, aguarde um momento...");
+
+    setTimeout(() => {
+      this.updateProductSummary();
+      this.speak(
+        `Você está executando o pagamento do produto ${this.productName} no valor de ${this.productValue}. 
+       Diga "ajuda" a qualquer momento para ouvir os comandos.`
+      );
+      this.startVoiceFlow();
+    }, 1500);
   }
 
   greetOnce() {
@@ -100,29 +107,42 @@ class VoicePayment {
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtx) return;
+
+      // Cria o contexto se ainda não existir
       if (!this._ctx) this._ctx = new AudioCtx();
+
+      // Garante que o contexto de áudio esteja ativo
       if (this._ctx.state === "suspended") await this._ctx.resume();
 
-      // Mantém o contexto vivo
+      // Toca um som silencioso para desbloquear saída de áudio
       const buffer = this._ctx.createBuffer(1, 1, 22050);
       const source = this._ctx.createBufferSource();
       source.buffer = buffer;
       source.connect(this._ctx.destination);
       source.start(0);
 
-      // inicia loop keep alive
-      this.keepAudioAlive();
+      // 🔊 iOS fix — desbloqueia voz e áudio em interação direta
+      const unlock = () => {
+        if (this._ctx?.state === "suspended") this._ctx.resume();
+        if (window.speechSynthesis?.paused) window.speechSynthesis.resume();
+        // Faz uma fala mínima para "ativar" o speechSynthesis no iOS
+        const u = new SpeechSynthesisUtterance(" ");
+        u.lang = "pt-BR";
+        window.speechSynthesis.speak(u);
+        document.body.removeEventListener("touchstart", unlock);
+        document.body.removeEventListener("click", unlock);
+      };
+      document.body.addEventListener("touchstart", unlock, { passive: true });
+      document.body.addEventListener("click", unlock, { passive: true });
 
-      // pega e guarda o stream uma única vez
-      if (!this.audioStream) {
-        this.audioStream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-        });
-      }
+      // 🔁 Mantém o contexto de áudio vivo a cada 10s (iOS costuma pausar)
+      clearTimeout(this.audioKeepAlive);
+      this.audioKeepAlive = setTimeout(() => this.ensureAudioUnlocked(), 10000);
     } catch (e) {
       this.handleError(
-        "Falha ao desbloquear o áudio. Clique novamente no botão de início."
+        "Falha ao desbloquear o áudio. Toque na tela e tente novamente."
       );
+      console.warn("⚠️ Erro ao desbloquear áudio:", e);
     }
   }
 
