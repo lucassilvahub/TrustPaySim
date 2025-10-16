@@ -103,16 +103,50 @@ class VoicePayment {
       if (!this._ctx) this._ctx = new AudioCtx();
       if (this._ctx.state === "suspended") await this._ctx.resume();
 
+      // Mantém o contexto vivo
       const buffer = this._ctx.createBuffer(1, 1, 22050);
       const source = this._ctx.createBufferSource();
       source.buffer = buffer;
       source.connect(this._ctx.destination);
       source.start(0);
+
+      // inicia loop keep alive
+      this.keepAudioAlive();
+
+      // pega e guarda o stream uma única vez
+      if (!this.audioStream) {
+        this.audioStream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+      }
     } catch (e) {
       this.handleError(
-        "Não foi possível desbloquear o áudio. Clique novamente no botão de início."
+        "Falha ao desbloquear o áudio. Clique novamente no botão de início."
       );
     }
+  }
+
+  previousStep() {
+    if (this.step > 1) {
+      this.step--;
+      this.gotoStep(this.step);
+      this.currentField = this.getNextEmptyField(this.step);
+      this.speak("Voltando uma etapa. " + this.getFieldHint(this.currentField));
+    } else {
+      this.speak("Você já está na primeira etapa.");
+    }
+  }
+
+  repeatField() {
+    if (this.currentField) {
+      this.speak(this.getFieldHint(this.currentField));
+    } else {
+      this.speak("Nada para repetir no momento.");
+    }
+  }
+
+  cancel() {
+    this.speak("Operação cancelada. Se desejar recomeçar, diga nova compra.");
   }
 
   setupSpeech() {
@@ -140,6 +174,15 @@ class VoicePayment {
     synth.speak(utter);
   }
 
+  async setupAudioStream() {
+    if (!this.audioStream) {
+      this.audioStream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+    }
+    return this.audioStream;
+  }
+
   /* ========= Reconhecimento de voz ========= */
   async setupVoiceRecognition() {
     const SpeechRecognition =
@@ -149,7 +192,6 @@ class VoicePayment {
       return;
     }
 
-    // 🔹 Pede permissão só uma vez
     if (!this.audioStream) {
       try {
         this.audioStream = await navigator.mediaDevices.getUserMedia({
@@ -169,15 +211,26 @@ class VoicePayment {
     this.recognition.onstart = () => {
       this.isListening = true;
       this.updateStatus("🎤 Escutando...", "listening");
+      this.startSilenceTimer();
       this.startVisualizer();
     };
 
     this.recognition.onend = () => {
       this.isListening = false;
       this.stopVisualizer();
-      // reinicia o reconhecimento, sem pedir permissão de novo
+
+      // nunca pedir permissão de novo, apenas reiniciar a escuta
       if (this.isInitialized && !this.isInSuccessScreen) {
-        setTimeout(() => this.startListening(), 1000);
+        setTimeout(() => {
+          try {
+            if (this.recognition && !this.isListening) {
+              this.recognition.start();
+              console.log("🎤 Reconhecimento reiniciado automaticamente.");
+            }
+          } catch (err) {
+            console.warn("Falha ao reiniciar reconhecimento:", err);
+          }
+        }, 800);
       }
     };
 
@@ -197,6 +250,22 @@ class VoicePayment {
     };
 
     this.startListening();
+  }
+
+  keepAudioAlive() {
+    if (!this._ctx) return;
+    try {
+      const buffer = this._ctx.createBuffer(1, 1, 22050);
+      const src = this._ctx.createBufferSource();
+      src.buffer = buffer;
+      src.connect(this._ctx.destination);
+      src.start(0);
+      clearTimeout(this.audioKeepAlive);
+      // mantém ativo tocando áudio silencioso a cada 10s
+      this.audioKeepAlive = setTimeout(() => this.keepAudioAlive(), 10000);
+    } catch (err) {
+      console.warn("KeepAudioAlive falhou:", err);
+    }
   }
 
   startListening() {
@@ -264,14 +333,25 @@ class VoicePayment {
     if (this.visualizer) this.visualizer.style.transform = "scale(1)";
   }
 
+  showHelp() {
+    const msg =
+      "Você pode dizer: voltar, confirmar e avançar, corrigir, repetir, cancelar ou finalizar. " +
+      "Durante o preenchimento, diga apenas o valor pedido, por exemplo: 'meu nome é João da Silva' ou 'validade doze vinte e cinco'.";
+    this.speak(msg);
+    this.updateStatus("ℹ️ " + msg, "info");
+  }
+
   /* ========= Interpretação ========= */
   processVoiceInput(text) {
     if (!text) return;
     text = text.toLowerCase().trim();
 
+    clearTimeout(this.silenceTimer);
+    this.startSilenceTimer();
+
     console.log("🎧 Reconhecido:", text);
 
-    //  Sempre disponível — independente de etapa
+    // Sempre disponível — independente de etapa
     if (text.includes("ajuda")) {
       this.showHelp();
       return;
@@ -282,14 +362,26 @@ class VoicePayment {
       const alvo = palavras.find((p) => text.includes(p));
       if (alvo) {
         const id = this.fieldAliases[alvo];
+        // ✅ Não permite corrigir campo ainda não preenchido
+        if (!this.data[id]) {
+          this.handleError(
+            `O campo ${this.getFieldLabel(id)} ainda não foi preenchido.`
+          );
+          return;
+        }
         this.handleCorrection(id);
       } else {
-        this.handleCorrection(this.currentField);
+        // só permite corrigir campo atual se já tiver algo digitado
+        if (this.currentField && this.data[this.currentField]) {
+          this.handleCorrection(this.currentField);
+        } else {
+          this.handleError("Nenhum campo disponível para correção no momento.");
+        }
       }
       return;
     }
 
-    //  Início de fluxo
+    // Início de fluxo
     if (
       !this.isInitialized &&
       (text.includes("começar pagamento") || text.includes("comecar pagamento"))
@@ -298,7 +390,7 @@ class VoicePayment {
       return;
     }
 
-    //  Sucesso / finalização
+    // Sucesso / finalização
     if (this.isInSuccessScreen) {
       if (text.includes("nova compra")) return this.restart();
       if (text.includes("finalizar")) return this.finish();
@@ -317,14 +409,53 @@ class VoicePayment {
         return this.rejectValue();
     }
 
+    if (text.includes("concluir")) {
+      if (this.isConfirming) return this.confirmValue();
+      if (this.step === 3) return this.handleConfirm();
+    }
+
     // Comandos gerais (confirmar e avançar, voltar, etc.)
     for (const [cmd, action] of Object.entries(this.commands)) {
       if (text.includes(cmd)) return action(text);
     }
 
-    //  Preenchimento de campo ativo
+    // Preenchimento de campo ativo com pré-tratamento de frases
     if (this.currentField) {
-      this.fillField(this.currentField, text);
+      let cleanText = text;
+
+      // Normaliza expressões comuns como "meu nome é", "meu CPF é", "o número do cartão é"
+      cleanText = cleanText
+        .replace(/^meu\s+/i, "")
+        .replace(/^minha\s+/i, "")
+        .replace(/^o\s+/i, "")
+        .replace(/^a\s+/i, "")
+        .replace(/\s+é\s+/, " ")
+        .replace(/\sé\s/, " ");
+
+      // Remove prefixos específicos por campo
+      if (this.currentField === "name") {
+        cleanText = cleanText.replace(/^nome\s*(completo)?\s*/, "");
+      }
+      if (this.currentField === "email") {
+        cleanText = cleanText
+          .replace(/^e-?mail\s*/, "")
+          .replace(/^email\s*/, "")
+          .replace(/^meu\s+email\s+/, "");
+      }
+      if (this.currentField === "cpf") {
+        cleanText = cleanText.replace(/^cpf\s*/, "");
+      }
+      if (this.currentField === "cardNumber") {
+        cleanText = cleanText.replace(
+          /^(n(ú|u)mero\s*(do)?\s*)?cart(ã|a)o\s*/,
+          ""
+        );
+      }
+      if (this.currentField === "cardName") {
+        cleanText = cleanText.replace(/^nome\s*(no)?\s*cart(ã|a)o\s*/, "");
+      }
+
+      this.fillField(this.currentField, cleanText.trim());
     }
   }
 
@@ -336,7 +467,32 @@ class VoicePayment {
     this.currentField = fieldId;
     this.pendingValue = null;
     this.isConfirming = false;
-    this.speak("Ok, vamos corrigir. " + this.getFieldHint(fieldId));
+    this.speak(
+      `Ok, vamos corrigir o campo ${this.getFieldLabel(
+        fieldId
+      )}. ${this.getFieldHint(fieldId)}`
+    );
+  }
+
+  startSilenceTimer() {
+    clearTimeout(this.silenceTimer);
+    // Espera 5s de silêncio
+    this.silenceTimer = setTimeout(() => {
+      // Se estiver escutando, mas não recebeu fala, repete a última instrução
+      if (this.isListening && this.isInitialized && !this.isInSuccessScreen) {
+        let msg = "";
+        if (this.isConfirming && this.currentField) {
+          msg = `${this.getFieldLabel(this.currentField)}: ${
+            this.pendingValue
+          }. Confirma?`;
+        } else if (this.currentField) {
+          msg = this.getFieldHint(this.currentField);
+        } else {
+          msg = "Pode repetir o que disse, por favor?";
+        }
+        this.speak(msg);
+      }
+    }, 22000);
   }
 
   /* ========= Campos e Etapas ========= */
@@ -491,38 +647,79 @@ class VoicePayment {
       .replaceAll("arroba", "@")
       .replaceAll("ponto", ".");
     const digits = t.replace(/\D/g, "");
-    if (id === "cpf" && digits.length === 11)
-      return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(
-        6,
-        9
-      )}-${digits.slice(9)}`;
-    if (id === "cardNumber") return digits.replace(/(.{4})/g, "$1 ").trim();
+
+    // === CPF ===
     if (id === "cpf") {
-      // remove palavras como "ponto", "traço", "hífen"
-      t = t
+      // remove qualquer palavra e deixa só números
+      let clean = text
+        .toLowerCase()
         .replaceAll("ponto", "")
         .replaceAll("traço", "")
         .replaceAll("traco", "")
         .replaceAll("hífen", "")
         .replaceAll("hifen", "")
-        .replace(/\D/g, "");
+        .replace(/\D/g, ""); // remove tudo que não for número
 
-      if (t.length === 11)
-        return `${t.slice(0, 3)}${t.slice(3, 6)}${t.slice(6, 9)}${t.slice(9)}`;
-      return t;
+      return clean; // retorna apenas números
     }
+
+    // === NÚMERO DO CARTÃO ===
+    if (id === "cardNumber") {
+      // mantém só dígitos e espaça em grupos de 4
+      const clean = text.replace(/\D/g, "");
+      return clean.replace(/(.{4})/g, "$1 ").trim();
+    }
+
+    // === NOME COMPLETO ===
     if (id === "name") {
+      // remove números e normaliza capitalização
+      t = t.replace(/[0-9]/g, "").trim();
+      if (!t) return "";
       return t
         .split(" ")
+        .filter((p) => p.length > 0)
         .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
         .join(" ");
     }
+
+    // === E-MAIL ===
     if (id === "email") {
       return t.replace(/\s+/g, "").toLowerCase();
     }
-    if (id === "cardExpiry" && digits.length === 4)
-      return digits.slice(0, 2) + "/" + digits.slice(2);
-    if (id === "cardCvv") return digits;
+
+    // === VALIDADE ===
+    if (id === "cardExpiry") {
+      // converte fala tipo “dois mil e vinte e cinco” → 25
+      let normalized = text
+        .toLowerCase()
+        .replace(/dois mil e /g, "")
+        .replace(/\D/g, "");
+
+      // tenta pegar formato MM/AAAA ou MM/AA
+      const match = normalized.match(/(\d{1,2})(\d{2,4})/);
+      if (!match) return normalized;
+
+      let mm = match[1].padStart(2, "0");
+      let yy = match[2];
+      if (yy.length === 4) yy = yy.slice(2); // converte 2025 → 25
+
+      return `${mm}/${yy}`;
+    }
+
+    // === CVV ===
+    if (id === "cardCvv") {
+      // aceita fala tipo “um dois três” (convertido em 123)
+      const clean = text.replace(/\D/g, "");
+      return clean;
+    }
+
+    // === NOME NO CARTÃO ===
+    if (id === "cardName") {
+      // remove números e converte para caps lock
+      const cleaned = text.replace(/[0-9]/g, "").trim();
+      return cleaned.toUpperCase();
+    }
+
     return t;
   }
 
@@ -566,12 +763,29 @@ class VoicePayment {
     };
 
     switch (id) {
+      case "name": {
+        if (/\d/.test(v)) return fail("O nome não pode conter números.");
+        if (v.trim().split(" ").length < 2)
+          return fail("Diga seu nome completo, por favor.");
+        return ok(v);
+      }
+
       case "cpf": {
         const digits = onlyDigits(v);
-        if (digits.length !== 11) return fail("CPF deve conter 11 dígitos.");
+        if (!/^\d{11}$/.test(digits))
+          return fail("CPF deve conter apenas 11 dígitos numéricos.");
         if (!isValidCPF(digits)) return fail("CPF inválido.");
-        // retornamos formatado para visual (mas quando for falar, use leitura digitada)
         return ok(formatCPF(digits));
+      }
+
+      case "cardName": {
+        if (/\d/.test(v))
+          return fail("O nome no cartão não pode conter números.");
+        if (!v || v.length < 3)
+          return fail(
+            "Nome no cartão inválido. Diga o nome completo impresso."
+          );
+        return ok(v.toUpperCase());
       }
 
       case "email": {
@@ -594,10 +808,15 @@ class VoicePayment {
       }
 
       case "cardExpiry": {
-        const m = (v || "").toString().match(/(\d{2})\/(\d{2})/);
+        const m = (v || "").toString().match(/(\d{2})\/(\d{2,4})/);
+        if (!m)
+          return fail(
+            "Validade inválida. Use mês e ano, por exemplo doze vinte e cinco."
+          );
         if (!m) return fail("Validade inválida. Use MM/AA.");
         const mm = parseInt(m[1], 10);
         const yy = parseInt(m[2], 10);
+        if (yy > 99) yy = yy % 100; // converte 2025 → 25
         if (mm < 1 || mm > 12) return fail("Mês inválido na validade.");
         // converte para ano completo (assume 20xx)
         const now = new Date();
@@ -675,12 +894,32 @@ class VoicePayment {
   }
 
   restart() {
+    // Limpa dados internos
     this.data = {};
     this.isInSuccessScreen = false;
-    document.getElementById("success").style.display = "none";
+    this.pendingValue = null;
+    this.isConfirming = false;
+    this.currentField = null;
+
+    // Esconde tela de sucesso
+    const successEl = document.getElementById("success");
+    if (successEl) successEl.style.display = "none";
+
+    // Limpa todos os campos de input, select e textarea
+    document.querySelectorAll("input, select, textarea").forEach((el) => {
+      el.value = "";
+    });
+
+    // Retorna para a primeira etapa
     this.gotoStep(1);
     this.currentField = this.getNextEmptyField(1);
+
+    // Fala e atualiza o status
+    this.updateStatus("🎤 Nova compra iniciada.", "info");
     this.speak("Nova compra iniciada. " + this.getFieldHint(this.currentField));
+
+    // Reinicia reconhecimento de voz
+    this.startListening();
   }
 
   finish() {
@@ -700,7 +939,19 @@ class VoicePayment {
 
   /* ========= Novo método central de erros ========= */
   handleError(message, type = "error") {
-    this.updateStatus(`⚠️ ${message}`, type);
+    const el = document.getElementById("voiceStatus");
+    if (el) {
+      el.textContent = `⚠️ ${message}`;
+      el.className = `voice-status ${type}`;
+      // limpa a mensagem após 4 segundos
+      clearTimeout(this._clearErrorTimeout);
+      this._clearErrorTimeout = setTimeout(() => {
+        if (!this.isInSuccessScreen && this.isInitialized) {
+          el.textContent = "🎤 Aguardando sua resposta...";
+          el.className = "voice-status listening";
+        }
+      }, 4000);
+    }
     this.speak(`Atenção: ${message}`);
     console.warn(`[${type.toUpperCase()}] ${message}`);
   }
