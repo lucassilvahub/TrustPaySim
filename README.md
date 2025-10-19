@@ -7,7 +7,7 @@
 Este projeto é uma simulação do método de pagamento TrustPay, com suporte a acessibilidade, incluindo usuários com deficiência visual.  
 
 Você pode acessar a simulação através do GitHub Pages:  
-[🔗 Acessar TrustPaySim](https://lucassilvahub.github.io/TrustPaySim/)  
+[🔗 Acessar TrustPaySim](https://lucassilvasoftware.github.io/TrustPaySim/)  
 
 ## Funcionalidades
 - Simulação de pagamento TrustPay  
