@@ -432,6 +432,18 @@ async function processCommand(command) {
   
   updateVoiceStatus('🎤 Processando...', 'processing');
   
+  // COMANDO: Sair/Finalizar - para tudo
+  if (command.includes('sair') || command.includes('finalizar') || command.includes('encerrar')) {
+    if (recognition) {
+      recognition.stop();
+    }
+    await speak('Encerrando sistema. Obrigado por usar TrustPay!', true);
+    setTimeout(() => {
+      window.close();
+    }, 2000);
+    return;
+  }
+  
   // Se está na tela de confirmação final
   if (currentField >= fieldSequence.length) {
     if (command.includes('confirmar')) {
@@ -482,7 +494,7 @@ async function processCommand(command) {
   // Restaura status
   setTimeout(() => {
     if (!isSpeaking) {
-      updateVoiceStatus('🎤 Ouvindo...', 'listening');
+      updateVoiceStatus('🎤 Microfone ativo', 'listening');
     }
   }, 1000);
 }
@@ -515,12 +527,9 @@ async function confirmPayment() {
 }
 
 function resetPayment() {
-  // Para reconhecimento
-  if (recognition) {
-    recognition.stop();
-  }
-  
   speak('Reiniciando sistema...', true);
+  
+  // NÃO para o reconhecimento - mantém microfone aberto
   
   // Limpa dados
   Object.keys(paymentData).forEach(key => {
@@ -553,12 +562,9 @@ function resetPayment() {
   
   showToast('Sistema reiniciado');
   
-  // Reinicia escuta e fluxo
+  // Reinicia fluxo mantendo o microfone aberto
   setTimeout(() => {
-    startContinuousRecognition();
-    setTimeout(() => {
-      askNextField();
-    }, 1000);
+    askNextField();
   }, 1500);
 }
 
@@ -590,11 +596,25 @@ function startContinuousRecognition() {
     return;
   }
   
+  // Se já está ouvindo, não tenta iniciar novamente
+  if (isListening) {
+    console.log('✓ Microfone já está ativo');
+    return;
+  }
+  
   try {
     recognition.start();
-    console.log('Reconhecimento iniciado');
+    console.log('🎤 Iniciando microfone...');
+    // Reseta contador quando consegue iniciar
+    restartAttempts = 0;
   } catch (e) {
-    console.log('Reconhecimento já ativo ou erro:', e);
+    // Se der erro de "já iniciado", ignora
+    if (e.message && e.message.includes('started')) {
+      console.log('✓ Microfone já estava ativo');
+      isListening = true;
+    } else {
+      console.error('❌ Erro ao iniciar:', e);
+    }
   }
 }
 
@@ -606,15 +626,14 @@ function setupRecognition() {
   
   recognition = new SpeechRecognition();
   recognition.lang = 'pt-BR';
-  recognition.continuous = true;
+  recognition.continuous = true; // Mantém microfone sempre aberto
   recognition.interimResults = false;
   recognition.maxAlternatives = 1;
   
   recognition.onstart = () => {
     isListening = true;
-    restartAttempts = 0;
-    updateVoiceStatus('🎤 Ouvindo...', 'listening');
-    console.log('Escuta iniciada');
+    updateVoiceStatus('🎤 Microfone ativo', 'listening');
+    console.log('✓ Microfone aberto e pronto');
   };
   
   recognition.onresult = (event) => {
@@ -622,58 +641,66 @@ function setupRecognition() {
     const command = result[0].transcript;
     const confidence = result[0].confidence;
     
-    console.log(`Comando: "${command}" (confiança: ${confidence})`);
+    console.log(`🎤 Capturado: "${command}" (confiança: ${(confidence * 100).toFixed(0)}%)`);
     
     // Processa comando com confiança razoável
     if (confidence > 0.4) {
       processCommand(command);
     } else {
-      console.log('Confiança baixa, ignorando comando');
+      console.log('⚠️ Confiança baixa, ignorando');
     }
   };
   
   recognition.onerror = (event) => {
-    console.error('Erro no reconhecimento:', event.error);
+    console.error('❌ Erro no reconhecimento:', event.error);
     
+    // Ignora erro de "no-speech" - é normal quando ninguém está falando
     if (event.error === 'no-speech') {
-      console.log('Nenhuma fala detectada, continuando...');
+      console.log('Silêncio detectado, continuando escuta...');
       return;
     }
     
+    // Erro de permissão - crítico
     if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-      updateVoiceStatus('❌ Acesso ao microfone negado', 'error');
-      showToast('Por favor, permita o acesso ao microfone', true);
-      speak('Acesso ao microfone negado. Por favor, permita nas configurações do navegador.');
+      updateVoiceStatus('❌ Permissão de microfone negada', 'error');
+      showToast('Permita o acesso ao microfone nas configurações', true);
+      speak('Acesso ao microfone foi negado. Por favor, permita o acesso nas configurações do navegador.', true);
       return;
     }
     
+    // Erro de rede - tenta reconectar uma vez
     if (event.error === 'network') {
-      console.log('Erro de rede, tentando reconectar...');
-      setTimeout(startContinuousRecognition, 2000);
+      console.log('⚠️ Erro de rede, tentando reconectar...');
+      setTimeout(() => {
+        if (!isListening) {
+          startContinuousRecognition();
+        }
+      }, 2000);
       return;
     }
     
-    // Outros erros: tenta reiniciar
-    console.log('Erro temporário, reiniciando...');
-    setTimeout(startContinuousRecognition, 1000);
+    // Outros erros - apenas loga, não reinicia
+    console.log('⚠️ Erro temporário:', event.error);
   };
   
   recognition.onend = () => {
-    console.log('Reconhecimento finalizado');
+    console.log('⚠️ Reconhecimento encerrou inesperadamente');
     isListening = false;
     
-    // Reinicia automaticamente se não atingiu o limite
+    // Só reinicia se estiver dentro do limite E não for um encerramento intencional
     if (restartAttempts < maxRestartAttempts) {
       restartAttempts++;
-      console.log(`Reiniciando (tentativa ${restartAttempts}/${maxRestartAttempts})...`);
+      console.log(`🔄 Reconectando microfone... (${restartAttempts}/${maxRestartAttempts})`);
       
+      // Espera um pouco mais antes de reconectar para evitar loop
       setTimeout(() => {
         startContinuousRecognition();
-      }, 500);
+      }, 1000);
     } else {
-      console.log('Número máximo de reinicializações atingido');
-      updateVoiceStatus('⚠️ Sistema pausado', 'error');
-      speak('Sistema de reconhecimento pausado. Recarregue a página para reiniciar.');
+      console.log('❌ Limite de reconexões atingido');
+      updateVoiceStatus('⚠️ Microfone desconectado', 'error');
+      showToast('Microfone desconectou. Recarregue a página.', true);
+      speak('O microfone foi desconectado. Por favor, recarregue a página.', true);
     }
   };
 }
