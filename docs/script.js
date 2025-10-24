@@ -421,12 +421,22 @@ async function showFinalConfirmation() {
 // ============================================
 
 async function processCommand(command) {
+  const originalCommand = command;
   command = command.toLowerCase().trim();
-  console.log('Comando recebido:', command);
+  
+  console.log('═══════════════════════════════════════');
+  console.log('📥 COMANDO RECEBIDO:', originalCommand);
+  console.log('📊 Estado:', {
+    currentField: currentField,
+    waitingConfirmation: waitingConfirmation,
+    isSpeaking: isSpeaking,
+    fieldName: currentField < fieldSequence.length ? fieldSequence[currentField].name : 'final'
+  });
+  console.log('═══════════════════════════════════════');
   
   // Ignora comandos enquanto está falando
   if (isSpeaking) {
-    console.log('Sistema falando, ignorando comando');
+    console.log('⏸️ Sistema falando, ignorando comando');
     return;
   }
   
@@ -434,6 +444,7 @@ async function processCommand(command) {
   
   // COMANDO: Sair/Finalizar - para tudo
   if (command.includes('sair') || command.includes('finalizar') || command.includes('encerrar')) {
+    console.log('🚪 Comando SAIR detectado');
     if (recognition) {
       recognition.stop();
     }
@@ -446,49 +457,70 @@ async function processCommand(command) {
   
   // Se está na tela de confirmação final
   if (currentField >= fieldSequence.length) {
+    console.log('📋 Na tela de confirmação final');
     if (command.includes('confirmar')) {
+      console.log('✅ Confirmando pagamento');
       await confirmPayment();
       return;
     }
     if (command.includes('cancelar') || command.includes('recomeçar')) {
+      console.log('🔄 Reiniciando');
       resetPayment();
       return;
     }
+    console.log('⚠️ Comando não reconhecido na confirmação final');
+    return;
   }
   
   // Se está aguardando confirmação (sim/não)
   if (waitingConfirmation) {
-    if (command.includes('sim') || command.includes('confirmo') || command.includes('correto')) {
+    console.log('⏳ Aguardando confirmação SIM/NÃO');
+    console.log('Último dado capturado:', lastCapturedData);
+    
+    if (command.includes('sim') || command.includes('confirmo') || command.includes('correto') || command.includes('confirmar')) {
+      console.log('✅ Confirmação: SIM');
       await handleConfirmation(true);
       return;
     }
     if (command.includes('não') || command.includes('nao') || command.includes('errado') || command.includes('repetir')) {
+      console.log('❌ Confirmação: NÃO');
       await handleConfirmation(false);
       return;
     }
     // Se não entendeu, repete a confirmação
-    await speak('Não entendi. Por favor, diga sim para confirmar ou não para repetir.');
+    console.log('⚠️ Não entendeu SIM/NÃO, repetindo...');
+    await speak('Não entendi. Por favor, diga sim para confirmar ou não para repetir.', true);
     return;
   }
   
   // Se está coletando um campo
   const field = fieldSequence[currentField];
+  console.log('📝 Coletando campo:', field.name);
+  console.log('📝 Valor bruto capturado:', command);
   
-  // Extrai o valor do comando
-  let value = command;
+  // Extrai o valor do comando (usa o comando original para manter capitalização)
+  let value = originalCommand.trim();
   
+  console.log('🔧 Formatando valor...');
   // Formata o valor
   value = field.format(value);
+  console.log('✨ Valor formatado:', value);
   
   // Valida
-  if (field.validate(value)) {
+  console.log('🔍 Validando...');
+  const isValid = field.validate(value);
+  console.log('Validação:', isValid ? '✅ VÁLIDO' : '❌ INVÁLIDO');
+  
+  if (isValid) {
+    console.log('✅ Valor aceito, indo para confirmação');
     await confirmField(value);
   } else {
+    console.log('❌ Valor rejeitado');
     showToast(`${field.label} inválido, tente novamente`, true);
     field.hint.textContent = '❌ Dado inválido, repita por favor';
     field.hint.className = 'hint error';
     
-    await speak(`Desculpe, ${field.label} inválido. ${field.question}`);
+    await speak(`Desculpe, ${field.label} inválido. ${field.question}`, true);
   }
   
   // Restaura status
@@ -641,13 +673,19 @@ function setupRecognition() {
     const command = result[0].transcript;
     const confidence = result[0].confidence;
     
-    console.log(`🎤 Capturado: "${command}" (confiança: ${(confidence * 100).toFixed(0)}%)`);
+    console.log('═══════════════════════════════════════');
+    console.log('🎤 VOZ CAPTURADA');
+    console.log('Texto:', command);
+    console.log('Confiança:', (confidence * 100).toFixed(0) + '%');
+    console.log('Final?', result.isFinal);
+    console.log('═══════════════════════════════════════');
     
-    // Processa comando com confiança razoável
-    if (confidence > 0.4) {
+    // Processa comando mesmo com confiança baixa (para melhorar captura)
+    if (confidence > 0.3) {
       processCommand(command);
     } else {
-      console.log('⚠️ Confiança baixa, ignorando');
+      console.log('⚠️ Confiança muito baixa, ignorando');
+      showToast('Não entendi, pode repetir?', true);
     }
   };
   
