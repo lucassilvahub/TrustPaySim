@@ -17,7 +17,7 @@
       <p class="start-subtitle">Pagamento Totalmente por Voz</p>
       <p class="start-description">
         Para começar, <strong>clique no botão abaixo para liberar o som e o microfone</strong>.
-        Depois você pode falar <em>“ajuda”</em> a qualquer momento para ouvir os comandos.
+        Depois você pode falar <em>"ajuda"</em> a qualquer momento para ouvir os comandos.
       </p>
 
       <!-- BOTÃO DO PRIMEIRO CLIQUE -->
@@ -40,71 +40,74 @@
       🎤 Aguardando inicialização...
     </div>
 
-    <!-- Sensor de áudio (já estilizado no seu CSS) -->
+    <!-- Sensor de áudio -->
     <div id="audioVisualizer" class="audio-visualizer"></div>
 
-    <!-- Etapa 1 -->
+    <!-- Etapa 1: Dados Pessoais -->
     <div class="step active" id="step1" data-step="1">
       <h2>Seus dados pessoais</h2>
 
       <div class="field">
         <label for="name">Nome completo</label>
         <input type="text" id="name" readonly />
-        <span class="hint" id="nameHint"></span>
+        <span class="hint" id="nameHint">Diga: "nome [seu nome completo]"</span>
       </div>
 
       <div class="field">
         <label for="email">E-mail</label>
         <input type="email" id="email" readonly />
-        <span class="hint" id="emailHint"></span>
+        <span class="hint" id="emailHint">Diga: "email [seu email]"</span>
       </div>
 
       <div class="field">
         <label for="cpf">CPF</label>
         <input type="text" id="cpf" readonly />
-        <span class="hint" id="cpfHint"></span>
+        <span class="hint" id="cpfHint">Diga: "CPF [seus números]"</span>
       </div>
 
       <div class="summary" id="summary">
-        <p><strong id="productNameDisplay"></strong></p>
-        <p>Total: <strong id="productValueDisplay"></strong></p>
+        <p><strong id="productNameDisplay">Notebook Gamer Pro X15</strong></p>
+        <p>Total: <strong id="productValueDisplay">R$ 2.499,00</strong></p>
       </div>
 
     </div>
 
-    <!-- Etapa 2 -->
+    <!-- Etapa 2: Dados do Cartão -->
     <div class="step" id="step2" data-step="2">
       <h2>Dados do Cartão</h2>
 
       <div class="field">
         <label for="cardNumber">Número do Cartão</label>
         <input type="text" id="cardNumber" readonly />
-        <span class="hint" id="cardNumberHint"></span>
+        <span class="hint" id="cardNumberHint">Diga: "cartão [16 dígitos]"</span>
       </div>
 
       <div class="field">
         <label for="cardName">Nome no Cartão</label>
         <input type="text" id="cardName" readonly />
-        <span class="hint" id="cardNameHint"></span>
+        <span class="hint" id="cardNameHint">Diga: "titular [nome no cartão]"</span>
       </div>
 
       <div class="field">
         <label for="cardExpiry">Validade (MM/AA)</label>
         <input type="text" id="cardExpiry" readonly />
-        <span class="hint" id="cardExpiryHint"></span>
+        <span class="hint" id="cardExpiryHint">Diga: "validade [mês] [ano]"</span>
       </div>
 
       <div class="field">
         <label for="cardCvv">CVV</label>
         <input type="text" id="cardCvv" readonly />
-        <span class="hint" id="cardCvvHint"></span>
+        <span class="hint" id="cardCvvHint">Diga: "CVV [3 ou 4 dígitos]"</span>
       </div>
     </div>
 
-    <!-- Etapa 3 -->
+    <!-- Etapa 3: Confirmação -->
     <div class="step" id="step3" data-step="3">
       <h2>✅ Confirmação</h2>
       <div class="confirmation" id="confirmData"></div>
+      <p style="margin-top: 1.5rem; text-align: center; color: #4f46e5; font-weight: 600;">
+        Diga "confirmar pagamento" para finalizar
+      </p>
     </div>
 
     <!-- Sucesso -->
@@ -112,11 +115,11 @@
       <div class="success">
         <div class="success-icon">✓</div>
         <h2>Pagamento Aprovado!</h2>
-        <p>ID: TP-k7hv2b-3f8a1c2d9e0f4b6a</p>
-        <p>Valor: R$ 2.499,00</strong></p>
+        <p><strong>ID:</strong> TP-k7hv2b-3f8a1c2d9e0f4b6a</p>
+        <p><strong>Valor:</strong> R$ 2.499,00</p>
         <p class="date" id="transactionDate"></p>
         <div class="success-actions">
-          <p class="action-hint">Diga "nova compra" para recomeçar ou "finalizar" para encerrar</p>
+          <p class="action-hint">Diga "nova compra" para recomeçar ou "sair" para encerrar</p>
         </div>
       </div>
     </div>
