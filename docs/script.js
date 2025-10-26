@@ -332,6 +332,18 @@ async function askNextField() {
   const field = fieldSequence[currentField];
   currentFieldName = field.name;
 
+  console.log(
+    `📋 PERGUNTANDO CAMPO ${currentField + 1}/${fieldSequence.length}: ${
+      field.name
+    }`
+  );
+  console.log(`Estado antes de perguntar:`, {
+    currentField,
+    waitingConfirmation,
+    isSpeaking,
+    isListening,
+  });
+
   // Muda de step se necessário
   goToStep(field.step);
 
@@ -346,11 +358,23 @@ async function askNextField() {
   updateVoiceStatus(`🎤 ${field.label.toUpperCase()}`, "listening");
   await speak(field.question, true);
 
+  console.log(`✅ Pergunta feita! Agora aguardando resposta...`);
+  console.log(`Estado após perguntar:`, {
+    currentField,
+    waitingConfirmation,
+    isSpeaking,
+    isListening,
+  });
+
   waitingConfirmation = false;
 }
 
 async function confirmField(value) {
   const field = fieldSequence[currentField];
+
+  console.log(`✅ ENTRANDO EM CONFIRMAÇÃO`);
+  console.log(`Campo: ${field.name}`);
+  console.log(`Valor: ${value}`);
 
   waitingConfirmation = true;
   lastCapturedData = value;
@@ -361,17 +385,32 @@ async function confirmField(value) {
   field.hint.className = "hint";
 
   updateVoiceStatus("❓ Confirme os dados", "confirming");
+
   await speak(field.confirmation(value), true);
+
+  console.log(`✅ Confirmação falada! Aguardando SIM/NÃO...`);
+  console.log(`Estado:`, {
+    waitingConfirmation,
+    lastCapturedData,
+    isSpeaking,
+    isListening,
+  });
 }
 
 async function handleConfirmation(isConfirmed) {
   const field = fieldSequence[currentField];
+
+  console.log(
+    `🔄 PROCESSANDO CONFIRMAÇÃO: ${isConfirmed ? "SIM ✅" : "NÃO ❌"}`
+  );
 
   if (isConfirmed) {
     // Confirma e salva o dado
     paymentData[field.name] = lastCapturedData;
     field.input.value = lastCapturedData;
     markFieldFilled(field.input);
+
+    console.log(`💾 Dado salvo:`, paymentData[field.name]);
 
     showToast(`✓ ${field.label} confirmado`);
     await speak("Confirmado!");
@@ -381,12 +420,16 @@ async function handleConfirmation(isConfirmed) {
     waitingConfirmation = false;
     lastCapturedData = "";
 
+    console.log(`➡️ Avançando para campo ${currentField + 1}`);
+
     // Pequena pausa antes de perguntar o próximo
     setTimeout(() => {
       askNextField();
     }, 1500);
   } else {
     // Repete a pergunta
+    console.log(`🔄 Repetindo pergunta do campo: ${field.name}`);
+
     field.hint.textContent = "🔄 Vamos tentar novamente...";
     await speak("Vamos tentar novamente.");
 
@@ -749,12 +792,16 @@ function setupRecognition() {
     console.log("Final?", result.isFinal);
     console.log("═══════════════════════════════════════");
 
-    // Processa comando mesmo com confiança baixa (para melhorar captura)
-    if (confidence > 0.3) {
+    // Processa comando mesmo com confiança baixa (mobile precisa de threshold menor)
+    if (confidence > 0.2) {
       processCommand(command);
     } else {
-      console.log("⚠️ Confiança muito baixa, ignorando");
-      showToast("Não entendi, pode repetir?", true);
+      console.log(
+        "⚠️ Confiança muito baixa (" +
+          (confidence * 100).toFixed(0) +
+          "%), ignorando"
+      );
+      showToast("Não entendi bem, pode repetir?", true);
     }
   };
 
