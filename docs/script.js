@@ -180,7 +180,7 @@ const fieldSequence = [
     },
     format: (value) => value.replace(/\D/g, ""),
     question: "Por último, diga o CVV, código de 3 ou 4 dígitos.",
-    confirmation: (value) => `CVV registrado. Está correto? Diga sim ou não.`,
+    confirmation: (value) => `CVV: ${value}. Está correto? Diga sim ou não.`,
   },
 ];
 
@@ -432,6 +432,7 @@ async function showFinalConfirmation() {
     `Cartão final: ${paymentData.cardNumber.replace(/\D/g, "").slice(-4)}.`
   );
   await speak(`Titular: ${paymentData.cardName}.`);
+  await speak(`CVV: ${paymentData.cardCvv}.`);
   await speak(`Produto: ${paymentData.productName}.`);
   await speak(`Valor total: ${paymentData.productValue}.`);
 
