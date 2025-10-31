@@ -1,7 +1,8 @@
 // ============================================
-// TRUSTPAY - Sistema de Pagamento por Voz
+// TRUSTPAY - Sistema de Pagamento por Voz (v2)
 // Reconhecimento contínuo e automático
-// Fluxo sequencial - pede dado por dado
+// Fluxo sequencial com comandos globais robustos:
+// sair, nova compra, cancelar, ajuda, voltar, corrigir [campo]
 // Compatível: Chrome, Safari, Edge, Android
 // ============================================
 
@@ -51,6 +52,7 @@ let currentField = 0;
 let waitingConfirmation = false;
 let lastCapturedData = "";
 let currentFieldName = "";
+let awaitingCorrectionTarget = false; // <— novo: aguardando o usuário dizer qual campo quer corrigir
 
 // Dados do pagamento
 const paymentData = {
@@ -139,7 +141,9 @@ const fieldSequence = [
     question:
       "Agora os dados do cartão. Diga o número do cartão com 16 dígitos.",
     confirmation: (value) =>
-      `Cartão final: ${value.slice(-4)}. Está correto? Diga sim ou não.`,
+      `Cartão final: ${value
+        .replace(/\D/g, "")
+        .slice(-4)}. Está correto? Diga sim ou não.`,
   },
   {
     name: "cardName",
@@ -185,6 +189,55 @@ const fieldSequence = [
 ];
 
 // ============================================
+// MAPA DE ALIÁSES PARA CORREÇÃO POR VOZ (corrigir [campo])
+// ============================================
+const fieldAliasMap = new Map([
+  ["nome completo", "name"],
+  ["nome", "name"],
+  ["email", "email"],
+  ["e-mail", "email"],
+  ["cpf", "cpf"],
+  ["número do cartão", "cardNumber"],
+  ["numero do cartao", "cardNumber"],
+  ["cartão", "cardNumber"],
+  ["cartao", "cardNumber"],
+  ["nome no cartão", "cardName"],
+  ["nome no cartao", "cardName"],
+  ["titular", "cardName"],
+  ["validade", "cardExpiry"],
+  ["cvv", "cardCvv"],
+  ["código de segurança", "cardCvv"],
+  ["codigo de seguranca", "cardCvv"],
+]);
+
+function resolveFieldFromText(text) {
+  const t = (text || "").toLowerCase();
+  for (const [alias, name] of fieldAliasMap) {
+    if (t.includes(alias)) return name;
+  }
+  return null;
+}
+
+function jumpToFieldByName(name) {
+  const idx = fieldSequence.findIndex((f) => f.name === name);
+  if (idx >= 0) {
+    currentField = idx;
+    waitingConfirmation = false;
+    lastCapturedData = "";
+
+    const f = fieldSequence[idx];
+    // Destaca campo e pergunta novamente
+    highlightField(f.input);
+    speak(`Sem problemas, vamos corrigir ${f.label}. ${f.question}`, true);
+    setTimeout(() => {
+      askNextField();
+    }, 400);
+    return true;
+  }
+  return false;
+}
+
+// ============================================
 // FUNÇÕES DE SÍNTESE DE VOZ
 // ============================================
 
@@ -204,7 +257,7 @@ function speak(text, priority = false) {
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "pt-BR";
-    utterance.rate = 0.9;
+    utterance.rate = 1.5;
     utterance.pitch = 1;
     utterance.volume = 1;
 
@@ -482,144 +535,9 @@ async function showFinalConfirmation() {
   await new Promise((resolve) => setTimeout(resolve, 1000));
 
   await speak(
-    "Para finalizar a compra, diga: confirmar pagamento. Ou diga: cancelar, para recomeçar.",
+    "Para finalizar a compra, diga: confirmar pagamento. Para alterar algo, diga: corrigir e o nome do campo. Ou diga: nova compra para recomeçar.",
     true
   );
-}
-
-// ============================================
-// PROCESSAMENTO DE COMANDOS
-// ============================================
-
-async function processCommand(command) {
-  const originalCommand = command;
-  command = command.toLowerCase().trim();
-
-  console.log("═══════════════════════════════════════");
-  console.log("📥 COMANDO RECEBIDO:", originalCommand);
-  console.log("📊 Estado:", {
-    currentField: currentField,
-    waitingConfirmation: waitingConfirmation,
-    isSpeaking: isSpeaking,
-    fieldName:
-      currentField < fieldSequence.length
-        ? fieldSequence[currentField].name
-        : "final",
-  });
-  console.log("═══════════════════════════════════════");
-
-  // Ignora comandos enquanto está falando
-  if (isSpeaking) {
-    console.log("⏸️ Sistema falando, ignorando comando");
-    return;
-  }
-
-  updateVoiceStatus("🎤 Processando...", "processing");
-
-  // COMANDO: Sair/Finalizar - para tudo
-  if (
-    command.includes("sair") ||
-    command.includes("finalizar") ||
-    command.includes("encerrar")
-  ) {
-    console.log("🚪 Comando SAIR detectado");
-    if (recognition) {
-      recognition.stop();
-    }
-    await speak("Encerrando sistema. Obrigado por usar TrustPay!", true);
-    setTimeout(() => {
-      window.close();
-    }, 2000);
-    return;
-  }
-
-  // Se está na tela de confirmação final
-  if (currentField >= fieldSequence.length) {
-    console.log("📋 Na tela de confirmação final");
-    if (command.includes("confirmar")) {
-      console.log("✅ Confirmando pagamento");
-      await confirmPayment();
-      return;
-    }
-    if (command.includes("cancelar") || command.includes("recomeçar")) {
-      console.log("🔄 Reiniciando");
-      resetPayment();
-      return;
-    }
-    console.log("⚠️ Comando não reconhecido na confirmação final");
-    return;
-  }
-
-  // Se está aguardando confirmação (sim/não)
-  if (waitingConfirmation) {
-    console.log("⏳ Aguardando confirmação SIM/NÃO");
-    console.log("Último dado capturado:", lastCapturedData);
-
-    if (
-      command.includes("sim") ||
-      command.includes("confirmo") ||
-      command.includes("correto") ||
-      command.includes("confirmar")
-    ) {
-      console.log("✅ Confirmação: SIM");
-      await handleConfirmation(true);
-      return;
-    }
-    if (
-      command.includes("não") ||
-      command.includes("nao") ||
-      command.includes("errado") ||
-      command.includes("repetir")
-    ) {
-      console.log("❌ Confirmação: NÃO");
-      await handleConfirmation(false);
-      return;
-    }
-    // Se não entendeu, repete a confirmação
-    console.log("⚠️ Não entendeu SIM/NÃO, repetindo...");
-    await speak(
-      "Não entendi. Por favor, diga sim para confirmar ou não para repetir.",
-      true
-    );
-    return;
-  }
-
-  // Se está coletando um campo
-  const field = fieldSequence[currentField];
-  console.log("📝 Coletando campo:", field.name);
-  console.log("📝 Valor bruto capturado:", command);
-
-  // Extrai o valor do comando (usa o comando original para manter capitalização)
-  let value = originalCommand.trim();
-
-  console.log("🔧 Formatando valor...");
-  // Formata o valor
-  value = field.format(value);
-  console.log("✨ Valor formatado:", value);
-
-  // Valida
-  console.log("🔍 Validando...");
-  const isValid = field.validate(value);
-  console.log("Validação:", isValid ? "✅ VÁLIDO" : "❌ INVÁLIDO");
-
-  if (isValid) {
-    console.log("✅ Valor aceito, indo para confirmação");
-    await confirmField(value);
-  } else {
-    console.log("❌ Valor rejeitado");
-    showToast(`${field.label} inválido, tente novamente`, true);
-    field.hint.textContent = "❌ Dado inválido, repita por favor";
-    field.hint.className = "hint error";
-
-    await speak(`Desculpe, ${field.label} inválido. ${field.question}`, true);
-  }
-
-  // Restaura status
-  setTimeout(() => {
-    if (!isSpeaking) {
-      updateVoiceStatus("🎤 Microfone ativo", "listening");
-    }
-  }, 1000);
 }
 
 // ============================================
@@ -689,8 +607,10 @@ function resetPayment() {
   currentField = 0;
   waitingConfirmation = false;
   lastCapturedData = "";
+  awaitingCorrectionTarget = false;
 
   // Volta para step 1
+  document.querySelectorAll(".step").forEach((s) => (s.style.display = ""));
   successStep.style.display = "none";
   goToStep(1);
 
@@ -702,17 +622,46 @@ function resetPayment() {
   }, 1500);
 }
 
+function safeExit() {
+  // Encerra de forma confiável (window.close pode falhar)
+  try {
+    if (recognition) {
+      const prevOnEnd = recognition.onend;
+      recognition.onend = null; // evita reconexão automática
+      recognition.stop();
+      recognition.onend = prevOnEnd;
+    }
+  } catch (_) {}
+  isListening = false;
+
+  try {
+    if (audioContext) {
+      audioContext.close();
+      audioContext = null;
+    }
+  } catch (_) {}
+  if (animationFrame) {
+    cancelAnimationFrame(animationFrame);
+    animationFrame = null;
+  }
+
+  startScreen.style.display = "block";
+  main.style.display = "none";
+  showToast("Sessão encerrada. Obrigado por usar o TrustPay!");
+}
+
 // ============================================
 // AJUDA
 // ============================================
 
 async function showHelp() {
   console.log("❓ AJUDA ACIONADA");
+  updateVoiceStatus("ℹ️ Ajuda", "");
 
   const helpText = `
     Sistema de pagamento por voz.
-    O sistema vai perguntar cada dado, você responde, e confirma com sim ou não.
-    A qualquer momento você pode dizer: cancelar para recomeçar, ou sair para encerrar.
+    Diga o que eu pedir e confirme com SIM ou NÃO.
+    Comandos disponíveis: ajuda; corrigir [nome, email, cpf, número do cartão, titular, validade, CVV]; voltar; nova compra; cancelar; sair; confirmar pagamento.
   `;
 
   await speak(helpText, true);
@@ -728,6 +677,268 @@ async function showHelp() {
 }
 
 helpBtn.addEventListener("click", showHelp);
+
+// ============================================
+// PROCESSAMENTO DE COMANDOS (NLP simples)
+// ============================================
+
+// Helpers para melhorar confiabilidade de comandos de ajuda e globais
+function normalizeText(t) {
+  return (t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+// depois
+const HELP_RE =
+  /\b(ajuda|socorro|comandos|como funciona|o que posso dizer|quais sao os comandos)\b/;
+const INTERRUPTIBLE_RE =
+  /\b(ajuda|comandos|sair|finalizar|encerrar|nova compra|recomecar|reiniciar|comecar de novo|cancelar|limpar|voltar|anterior|corrigir|editar|alterar|mudar|confirmar)\b/;
+const CRITICAL_RE = /\b(ajuda|comandos|sair|nova compra|cancelar)\b/;
+
+function hasKeyword(text, regex) {
+  return regex.test(normalizeText(text));
+}
+
+async function processCommand(command) {
+  const originalCommand = command;
+  command = command.toLowerCase().trim();
+
+  console.log("═══════════════════════════════════════");
+  console.log("📥 COMANDO RECEBIDO:", originalCommand);
+  console.log("📊 Estado:", {
+    currentField: currentField,
+    waitingConfirmation: waitingConfirmation,
+    isSpeaking: isSpeaking,
+    fieldName:
+      currentField < fieldSequence.length
+        ? fieldSequence[currentField].name
+        : "final",
+  });
+  console.log("═══════════════════════════════════════");
+
+  // Ignora comandos enquanto está falando, EXCETO comandos globais (interrompe a fala)
+  if (isSpeaking) {
+    if (hasKeyword(originalCommand, INTERRUPTIBLE_RE)) {
+      try {
+        SpeechSynthesis.cancel();
+      } catch (_) {}
+      isSpeaking = false;
+      console.log("⏹️ Interrompi a fala para executar comando global");
+    } else {
+      console.log("⏸️ Sistema falando, ignorando comando não-prioritário");
+      return;
+    }
+  }
+
+  updateVoiceStatus("🎤 Processando...", "processing");
+
+  // 0) Caso especial: aguardando o usuário dizer QUAL campo corrigir
+  if (awaitingCorrectionTarget) {
+    const targetFromAnswer = resolveFieldFromText(command);
+    if (targetFromAnswer) {
+      awaitingCorrectionTarget = false;
+      jumpToFieldByName(targetFromAnswer);
+    } else {
+      await speak(
+        "Não entendi o campo. Diga: nome, email, cpf, número do cartão, titular, validade, ou CVV.",
+        true
+      );
+    }
+    return;
+  }
+
+  // 1) COMANDO GLOBAL: AJUDA
+  if (hasKeyword(command, HELP_RE)) {
+    await showHelp();
+    updateVoiceStatus("ℹ️ Ajuda reproduzida", "");
+    return;
+  }
+
+  // 2) COMANDO GLOBAL: SAIR/FINALIZAR
+  if (
+    command.includes("sair") ||
+    command.includes("finalizar") ||
+    command.includes("encerrar")
+  ) {
+    console.log("🚪 Comando SAIR detectado");
+    await speak("Encerrando. Obrigado por usar o TrustPay!", true);
+    safeExit();
+    return;
+  }
+
+  // 3) COMANDO GLOBAL: NOVA COMPRA / REINICIAR / CANCELAR
+  if (
+    command.includes("nova compra") ||
+    command.includes("recomeçar") ||
+    command.includes("reiniciar") ||
+    command.includes("começar de novo") ||
+    command.includes("cancelar") ||
+    command.includes("limpar")
+  ) {
+    console.log("🔄 Comando de REINÍCIO detectado");
+    resetPayment();
+    return;
+  }
+
+  // 4) COMANDO GLOBAL: VOLTAR UM CAMPO
+  if (command.includes("voltar") || command.includes("anterior")) {
+    console.log("⬅️ VOLTAR um campo");
+    if (currentField > 0) {
+      currentField = Math.max(0, currentField - 1);
+      waitingConfirmation = false;
+      lastCapturedData = "";
+      await speak("Ok, voltando um passo.");
+      askNextField();
+    } else {
+      await speak("Você já está no primeiro passo.");
+    }
+    return;
+  }
+  // 5) COMANDO GLOBAL: CORRIGIR / EDITAR [CAMPO]
+  if (
+    command.includes("corrigir") ||
+    command.includes("editar") ||
+    command.includes("alterar") ||
+    command.includes("mudar")
+  ) {
+    console.log("✏️ Comando CORRIGIR detectado");
+
+    const target = resolveFieldFromText(command);
+
+    if (target) {
+      // Verifica se o campo já foi preenchido
+      const fieldObj = fieldSequence.find((f) => f.name === target);
+      const value = paymentData[target];
+
+      if (!value || value.trim() === "") {
+        console.log("⚠️ Tentou corrigir campo ainda vazio:", target);
+        await speak(
+          `O campo ${fieldObj.label} ainda não foi preenchido. Vamos continuar com o fluxo atual.`,
+          true
+        );
+        return;
+      }
+
+      // Campo já preenchido → permitir correção
+      jumpToFieldByName(target);
+    } else {
+      // Se não especificou o campo:
+      if (currentField < fieldSequence.length && !waitingConfirmation) {
+        // corrigir o campo atual
+        const f = fieldSequence[currentField];
+        await speak(
+          `Sem problemas, vamos corrigir ${f.label}. ${f.question}`,
+          true
+        );
+      } else if (waitingConfirmation) {
+        // já está esperando SIM/NÃO do campo atual — re-perguntar
+        waitingConfirmation = false;
+        await speak(
+          `Sem problemas, vamos corrigir. ${fieldSequence[currentField].question}`,
+          true
+        );
+      } else {
+        // Na revisão final ou após sucesso — perguntar qual campo
+        awaitingCorrectionTarget = true;
+        await speak(
+          "Qual campo deseja corrigir? Diga: nome, email, cpf, número do cartão, titular, validade, ou CVV.",
+          true
+        );
+      }
+    }
+    return;
+  }
+
+  // 6) SE ESTÁ NA TELA DE CONFIRMAÇÃO FINAL OU SUCESSO
+  if (currentField >= fieldSequence.length) {
+    console.log("📋 Na tela de confirmação final/sucesso");
+
+    if (command.includes("confirmar")) {
+      console.log("✅ Confirmando pagamento");
+      await confirmPayment();
+      return;
+    }
+
+    // (Os comandos globais já trataram nova compra/cancelar/sair/corrigir)
+    console.log("⚠️ Comando não reconhecido na confirmação final");
+    await speak(
+      "Não entendi. Você pode dizer: confirmar pagamento, corrigir [campo], nova compra ou sair.",
+      true
+    );
+    return;
+  }
+
+  // 7) SE ESTÁ AGUARDANDO CONFIRMAÇÃO (SIM/NÃO)
+  if (waitingConfirmation) {
+    console.log("⏳ Aguardando confirmação SIM/NÃO");
+    console.log("Último dado capturado:", lastCapturedData);
+
+    if (
+      command.includes("sim") ||
+      command.includes("confirmo") ||
+      command.includes("correto") ||
+      command.includes("confirmar")
+    ) {
+      console.log("✅ Confirmação: SIM");
+      await handleConfirmation(true);
+      return;
+    }
+    if (
+      command.includes("não") ||
+      command.includes("nao") ||
+      command.includes("errado") ||
+      command.includes("repetir")
+    ) {
+      console.log("❌ Confirmação: NÃO");
+      await handleConfirmation(false);
+      return;
+    }
+
+    // Se disse outra coisa, oferecer ajuda
+    console.log("⚠️ Não entendeu SIM/NÃO, repetindo...");
+    await speak(
+      "Não entendi. Por favor, diga sim para confirmar, não para repetir, ou diga corrigir para alterar o dado.",
+      true
+    );
+    return;
+  }
+
+  // 8) COLETANDO VALOR DO CAMPO ATUAL
+  const field = fieldSequence[currentField];
+  console.log("📝 Coletando campo:", field.name);
+  console.log("📝 Valor bruto capturado:", command);
+
+  // Extrai o valor do comando (usa o comando original para manter capitalização)
+  let value = originalCommand.trim();
+
+  console.log("🔧 Formatando valor...");
+  // Formata o valor
+  value = field.format(value);
+  console.log("✨ Valor formatado:", value);
+
+  // Valida
+  console.log("🔍 Validando...");
+  const isValid = field.validate(value);
+  console.log("Validação:", isValid ? "✅ VÁLIDO" : "❌ INVÁLIDO");
+
+  if (isValid) {
+    console.log("✅ Valor aceito, indo para confirmação");
+    await confirmField(value);
+  } else {
+    console.log("❌ Valor rejeitado");
+    showToast(`${field.label} inválido, tente novamente`, true);
+    field.hint.textContent = "❌ Dado inválido, repita por favor";
+    field.hint.className = "hint error";
+
+    await speak(`Desculpe, ${field.label} inválido. ${field.question}`, true);
+  }
+
+  // Restaura status
+  setTimeout(() => {
+    if (!isSpeaking) {
+      updateVoiceStatus("🎤 Microfone ativo", "listening");
+    }
+  }, 1000);
+}
 
 // ============================================
 // RECONHECIMENTO DE VOZ CONTÍNUO
@@ -770,7 +981,7 @@ function setupRecognition() {
 
   recognition = new SpeechRecognition();
   recognition.lang = "pt-BR";
-  recognition.continuous = true; // Mantém microfone sempre aberto
+  recognition.continuous = true;
   recognition.interimResults = false;
   recognition.maxAlternatives = 1;
 
@@ -792,29 +1003,28 @@ function setupRecognition() {
     console.log("Final?", result.isFinal);
     console.log("═══════════════════════════════════════");
 
-    // Processa comando mesmo com confiança baixa (mobile precisa de threshold menor)
-    if (confidence > 0.2) {
+    // Processa mesmo com confiança baixa se contiver palavras críticas (ex.: ajuda)
+    const low = command.toLowerCase();
+    if (confidence > 0.2 || hasKeyword(low, CRITICAL_RE)) {
       processCommand(command);
     } else {
       console.log(
         "⚠️ Confiança muito baixa (" +
           (confidence * 100).toFixed(0) +
-          "%), ignorando"
+          "%) e sem palavra-chave crítica, ignorando"
       );
       showToast("Não entendi bem, pode repetir?", true);
     }
-  };
+  }; // ← FIM onresult (mantenha este ponto e NÃO coloque uma chave extra aqui)
 
   recognition.onerror = (event) => {
     console.error("❌ Erro no reconhecimento:", event.error);
 
-    // Ignora erro de "no-speech" - é normal quando ninguém está falando
     if (event.error === "no-speech") {
       console.log("Silêncio detectado, continuando escuta...");
       return;
     }
 
-    // Erro de permissão - crítico
     if (
       event.error === "not-allowed" ||
       event.error === "service-not-allowed"
@@ -828,18 +1038,14 @@ function setupRecognition() {
       return;
     }
 
-    // Erro de rede - tenta reconectar uma vez
     if (event.error === "network") {
       console.log("⚠️ Erro de rede, tentando reconectar...");
       setTimeout(() => {
-        if (!isListening) {
-          startContinuousRecognition();
-        }
+        if (!isListening) startContinuousRecognition();
       }, 2000);
       return;
     }
 
-    // Outros erros - apenas loga, não reinicia
     console.log("⚠️ Erro temporário:", event.error);
   };
 
@@ -847,14 +1053,11 @@ function setupRecognition() {
     console.log("⚠️ Reconhecimento encerrou inesperadamente");
     isListening = false;
 
-    // Só reinicia se estiver dentro do limite E não for um encerramento intencional
     if (restartAttempts < maxRestartAttempts) {
       restartAttempts++;
       console.log(
         `🔄 Reconectando microfone... (${restartAttempts}/${maxRestartAttempts})`
       );
-
-      // Espera um pouco mais antes de reconectar para evitar loop
       setTimeout(() => {
         startContinuousRecognition();
       }, 1000);
@@ -919,7 +1122,7 @@ startBtn.addEventListener("click", async () => {
         true
       );
       await speak(
-        "Vou te guiar passo a passo. Responda cada pergunta e confirme com sim ou não.",
+        "Vou te guiar passo a passo. Responda cada pergunta e confirme com sim ou não. Você pode dizer 'ajuda' a qualquer momento para ouvir os comandos.",
         true
       );
 
