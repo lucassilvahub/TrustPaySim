@@ -52,7 +52,7 @@ let currentField = 0;
 let waitingConfirmation = false;
 let lastCapturedData = "";
 let currentFieldName = "";
-let awaitingCorrectionTarget = false; // <— novo: aguardando o usuário dizer qual campo quer corrigir
+let awaitingCorrectionTarget = false; // aguardando o usuário dizer qual campo quer corrigir
 
 // Dados do pagamento
 const paymentData = {
@@ -228,6 +228,7 @@ function jumpToFieldByName(name) {
     const f = fieldSequence[idx];
     // Destaca campo e pergunta novamente
     highlightField(f.input);
+    f.input.focus(); // foco ajuda no Android
     speak(`Sem problemas, vamos corrigir ${f.label}. ${f.question}`, true);
     setTimeout(() => {
       askNextField();
@@ -250,14 +251,16 @@ function speak(text, priority = false) {
 
     // Se priority, cancela fala anterior
     if (priority) {
-      SpeechSynthesis.cancel();
+      try {
+        SpeechSynthesis.cancel();
+      } catch (_) {}
     }
 
     isSpeaking = true;
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "pt-BR";
-    utterance.rate = 1.5;
+    utterance.rate = 0.9; // velocidade solicitada
     utterance.pitch = 1;
     utterance.volume = 1;
 
@@ -402,6 +405,7 @@ async function askNextField() {
 
   // Destaca o campo atual
   highlightField(field.input);
+  field.input.focus(); // foco ajuda no Android
 
   // Atualiza hint
   field.hint.textContent = "🎤 Aguardando sua resposta...";
@@ -715,18 +719,12 @@ async function processCommand(command) {
   });
   console.log("═══════════════════════════════════════");
 
-  // Ignora comandos enquanto está falando, EXCETO comandos globais (interrompe a fala)
+  // 🟢 BARGE-IN: se estiver falando, cancela e processa a entrada
   if (isSpeaking) {
-    if (hasKeyword(originalCommand, INTERRUPTIBLE_RE)) {
-      try {
-        SpeechSynthesis.cancel();
-      } catch (_) {}
-      isSpeaking = false;
-      console.log("⏹️ Interrompi a fala para executar comando global");
-    } else {
-      console.log("⏸️ Sistema falando, ignorando comando não-prioritário");
-      return;
-    }
+    try {
+      SpeechSynthesis.cancel();
+    } catch (_) {}
+    isSpeaking = false;
   }
 
   updateVoiceStatus("🎤 Processando...", "processing");
@@ -793,6 +791,7 @@ async function processCommand(command) {
     }
     return;
   }
+
   // 5) COMANDO GLOBAL: CORRIGIR / EDITAR [CAMPO]
   if (
     command.includes("corrigir") ||
@@ -1003,7 +1002,14 @@ function setupRecognition() {
     console.log("Final?", result.isFinal);
     console.log("═══════════════════════════════════════");
 
-    // Processa mesmo com confiança baixa se contiver palavras críticas (ex.: ajuda)
+    // 🟢 BARGE-IN: se usuário falou, pare o TTS para não perder a fala
+    if (isSpeaking) {
+      try {
+        SpeechSynthesis.cancel();
+      } catch (_) {}
+      isSpeaking = false;
+    }
+
     const low = command.toLowerCase();
     if (confidence > 0.2 || hasKeyword(low, CRITICAL_RE)) {
       processCommand(command);
@@ -1015,7 +1021,7 @@ function setupRecognition() {
       );
       showToast("Não entendi bem, pode repetir?", true);
     }
-  }; // ← FIM onresult (mantenha este ponto e NÃO coloque uma chave extra aqui)
+  }; // ← FIM onresult
 
   recognition.onerror = (event) => {
     console.error("❌ Erro no reconhecimento:", event.error);
